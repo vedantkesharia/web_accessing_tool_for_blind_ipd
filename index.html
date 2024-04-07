@@ -6,8 +6,6 @@
 <title>Speech Recognition with AI Response</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-<!-- <script src="../static/js/colors.js" defer></script>
-<script src="./frontend.js" ></script> -->
 <script>
   // Define different color themes
 const colorThemes = {
@@ -121,23 +119,24 @@ function startRecognition() {
             } 
             if (transcript.includes("notes")) {
             // If the user wants to take notes, prompt for file name
-            speak("Please provide a file name for the note.");
+            speak("Please provide a file name for the note.", selectedLanguage);
             takeFileName(selectedLanguage);
         }
              else if (transcript.includes('help')) {
-                speak("Say 'help' for help, 'Wikipedia' for getting information from Wikipedia, and 'ask' to ask anything. To increase speed, say 'increase speed'. To decrease speed, say 'decrease speed and to abort the recognition, say 'stop'.");
+                speak("Say 'help' for help, 'Wikipedia' for getting information from Wikipedia, and 'ask' to ask anything. To increase speed, say 'increase speed'. To decrease speed, say 'decrease speed and to abort the recognition, say 'stop'.", selectedLanguage);
             } else if (transcript.includes('increase speed')) {
                 speechSpeed += 2;
-                speak("Speech speed increased.");
+                speak("Speech speed increased.",    selectedLanguage);
             } else if (transcript.includes('decrease speed')) {
                 speechSpeed -= 2;
-                speak("Speech speed decreased.");
+                speak("Speech speed decreased.",    selectedLanguage);
             } else if (transcript.includes('stop')) {
-                speakandstop("Execution aborted")
+                speakandstop("Execution aborted", selectedLanguage);
                 recognition.abort();
-            } else {
-                sendVoiceToPython(transcript);
-            }
+            } 
+            //else {
+            //     sendVoiceToPython(transcript);
+            // }
         }
     };
 
@@ -161,7 +160,7 @@ function takeFileName(selectedLanguage) {
 
     innerRecognition.onerror = function(event) {
         console.error("Error occurred during filename recognition:", event.error);
-        speak("An error occurred during filename recognition. Please try again.");
+        speak("An error occurred during filename recognition. Please try again.", selectedLanguage);
     };
 
     innerRecognition.onresult = function(event) {
@@ -190,7 +189,7 @@ function takeNoteContent(selectedLanguage, fileName) {
             document.getElementById("output").innerHTML += "<div class='instruction'><b>Note content:</b> " + response + "</div>";
             sendNoteToBackend(fileName, response, selectedLanguage);
         } else {
-            speak("I'm sorry, I didn't catch that. Please provide the content for the note.");
+            speak("I'm sorry, I didn't catch that. Please provide the content for the note.", selectedLanguage);
             document.getElementById("output").innerHTML += "<div class='instruction'><b>Please say the note content:</b></div>";
             takeNoteContent(selectedLanguage, fileName); // Retry if no response
         }
@@ -203,6 +202,48 @@ function takeNoteContent(selectedLanguage, fileName) {
    
 }
 
+function speakWithDelay(message, selectedLanguage, delay) {
+    // Mute the microphone
+    recognition.stop();
+
+    // Speak the message after the specified delay
+    setTimeout(function() {
+        speak(message, selectedLanguage);
+        // Restart recognition after speaking is finished
+        setTimeout(function() {
+            recognition.start();
+        }, 1000); // Delay to start recognition after speaking
+    }, delay); // Delay to speak the message
+}
+var isMicMuted = false; // Flag to track whether the microphone is muted
+
+// Function to temporarily mute the microphone for a specified duration
+function muteMicForDuration(duration) {
+    isMicMuted = true; // Set the flag to true to indicate that the microphone is muted
+    setTimeout(function() {
+        isMicMuted = false; // Unset the flag after the specified duration
+    }, duration);
+}
+
+function getQuestion(selectedLanguage) {
+    var innerRecognition = new webkitSpeechRecognition();
+    innerRecognition.lang = selectedLanguage;
+    innerRecognition.continuous = false;
+    innerRecognition.interimResults = false;
+    innerRecognition.onresult = function(event) {
+        var question = event.results[0][0].transcript.trim();
+        console.log('Transcript for "ask" command:', question); // Log the transcript
+        document.getElementById("output").innerHTML += "<div class='instruction'><b>Question:</b> " + question + '</div>';
+        sendVoiceToPythonForGemini(question, selectedLanguage);
+    };
+
+    document.getElementById("output").innerHTML += "<div class='searching'><b>Ask your question:</b></div>";
+    
+
+    innerRecognition.start(); 
+}
+
+
 function getSearchQuery(selectedLanguage) {
     recognition.stop();
     var innerRecognition = new webkitSpeechRecognition();
@@ -214,25 +255,48 @@ function getSearchQuery(selectedLanguage) {
         document.getElementById("output").innerHTML += "<div class='searchinig'><b>Search Query:</b> " + searchQuery + "</div>";
         sendVoiceToPythonForWikipedia(searchQuery, selectedLanguage);
     };
+    // speak("Ask your question", selectedLanguage); 
     document.getElementById("output").innerHTML += "<div class='instruction'><b>Say your search query for Wikipedia:</b></div>";
+    
     innerRecognition.start();
 }
 
-function getQuestion(selectedLanguage) {
-    recognition.stop();
-    var innerRecognition = new webkitSpeechRecognition();
-    innerRecognition.lang = selectedLanguage;
-    innerRecognition.continuous = false;
-    innerRecognition.interimResults = false;
-    innerRecognition.onresult = function(event) {
-        var question = event.results[0][0].transcript.trim();
-        console.log('Transcript for "ask" command:', question); // Log the transcript
-        document.getElementById("output").innerHTML += "<div class='instruction'><b>Question:</b> " + question + '</div>';
-        sendVoiceToPythonForGemini(question, selectedLanguage);
-    };
-    document.getElementById("output").innerHTML += "<div class='searching'><b>Ask your question:</b></div>";
-    innerRecognition.start();
-}
+// function getSearchQuery(selectedLanguage) {
+//     recognition.stop();
+//     var innerRecognition = new webkitSpeechRecognition();
+//     innerRecognition.lang = selectedLanguage;
+//     innerRecognition.continuous = false;
+//     innerRecognition.interimResults = false;
+//     innerRecognition.onresult = function(event) {
+//         var searchQuery = event.results[0][0].transcript.trim();
+//         document.getElementById("output").innerHTML += "<div class='searchinig'><b>Search Query:</b> " + searchQuery + "</div>";
+//         sendVoiceToPythonForWikipedia(searchQuery, selectedLanguage);
+//     };
+//     document.getElementById("output").innerHTML += "<div class='instruction'><b>Say your search query for Wikipedia:</b></div>";
+//     innerRecognition.start();
+// }
+
+// function getQuestion(selectedLanguage) {
+//     recognition.stop();
+//     var innerRecognition = new webkitSpeechRecognition();
+//     innerRecognition.lang = selectedLanguage;
+//     innerRecognition.continuous = false;
+//     innerRecognition.interimResults = false;
+//     innerRecognition.onresult = function(event) {
+//         var question = event.results[0][0].transcript.trim();
+//         console.log('Transcript for "ask" command:', question); // Log the transcript
+//         document.getElementById("output").innerHTML += "<div class='instruction'><b>Question:</b> " + question + '</div>';
+//         sendVoiceToPythonForGemini(question, selectedLanguage);
+//     };
+    
+//     document.getElementById("output").innerHTML += "<div class='searching'><b>Ask your question:</b></div>";
+    
+//     speakWithDelay("Ask your question", selectedLanguage, 1000); 
+//     // setTimeout(function() {
+//     //     innerRecognition.start(); // Start recognition after the message is spoken
+//     // }, 2000);
+//     innerRecognition.start();
+// }
 
 
 
@@ -244,12 +308,12 @@ function sendVoiceToPythonForWikipedia(searchQuery, selectedLanguage) {
         if (xhr.readyState === 4 && xhr.status === 200) {
             var response = JSON.parse(xhr.responseText);
             document.getElementById("action").innerHTML = "<div class='search-query'><b>Wikipedia Summary:</b> " + response.summary + "</div>";
-            // speak(response.summary); // Speak the Wikipedia summary
-            translateSummary(response.summary);
+            speak(response.summary, selectedLanguage); // Speak the Wikipedia summary
+            // translateSummary(response.summary, selectedLanguage);
             startRecognition(); // Start recognition again after response
         }
     };
-    var data = JSON.stringify({"search_query": searchQuery});
+    var data = JSON.stringify({"search_query": searchQuery, selected_language: selectedLanguage });
     xhr.send(data);
 }
 
@@ -261,7 +325,7 @@ function sendVoiceToPythonForGemini(question, selectedLanguage) {
         if (xhr.readyState === 4 && xhr.status === 200) {
             var response = JSON.parse(xhr.responseText);
             document.getElementById("action").innerHTML = "<div class='search-query'><b>Response:</b> " + response.ai_response + "</div>";
-            speak(response.ai_response); // Speak the Gemini response
+            speak(response.ai_response, selectedLanguage); // Speak the Gemini response
             startRecognition(); // Start recognition again after response
         }
     };
@@ -296,20 +360,30 @@ function sendNoteToBackend(fileName, noteContent, selectedLanguage) {
 
 
 
-
-function speak(text) {
+function speak(text, selectedLanguage) {
     var utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = speechSpeed; // Set the speech speed
+    utterance.lang = selectedLanguage; // Set the language for speech
     utterance.onend = function() {
         recognition.start(); // Start recognition after speaking is finished
     };
     window.speechSynthesis.speak(utterance);
 }
 
-function speakandstop(text) {
+// function speak(text) {
+//     var utterance = new SpeechSynthesisUtterance(text);
+//     utterance.rate = speechSpeed; // Set the speech speed
+//     utterance.lang = language; 
+//     utterance.onend = function() {
+//         recognition.start(); // Start recognition after speaking is finished
+//     };
+//     window.speechSynthesis.speak(utterance);
+// }
+
+function speakandstop(text,selectedLanguage) {
     var utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = speechSpeed; // Set the speech speed
-    
+    utterance.lang = selectedLanguage;
     window.speechSynthesis.speak(utterance);
 }
 
