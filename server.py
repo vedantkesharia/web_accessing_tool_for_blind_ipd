@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
+from googletrans import Translator
 import google.generativeai as genai
 import os
 import wikipedia
-from translate import Translator
 from dotenv import load_dotenv
 
 # Initialize Flask app
@@ -30,13 +30,13 @@ history = []
 chat = model.start_chat(history=history)
 
 def translate_to_english(text):
-    translator = Translator(to_lang="english")
-    translated_text = translator.translate(text)
+    translator = Translator()
+    translated_text = translator.translate(text, dest='en').text
     return translated_text
 
 def translate_to_selected_language(text, target_language):
-    translator = Translator(to_lang=target_language)
-    translated_text = translator.translate(text)
+    translator = Translator()
+    translated_text = translator.translate(text, dest=target_language).text
     return translated_text
 
 # Route to receive voice input from the HTML file
@@ -71,7 +71,6 @@ def get_wikipedia_summary():
     if selected_language != 'en':
         # Translate search query to English
         search_query = translate_to_english(search_query)
-        # print(search_query)
 
     # Fetch the Wikipedia summary for the given search query
     summary = wikipedia.summary(search_query, sentences=2)
@@ -99,6 +98,113 @@ def create_notes():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+
+
+
+
+# from flask import Flask, request, jsonify
+# from flask_cors import CORS, cross_origin
+# import google.generativeai as genai
+# import os
+# import wikipedia
+# from translate import Translator
+# from dotenv import load_dotenv
+
+# # Initialize Flask app
+# app = Flask(__name__)
+# CORS(app)
+# load_dotenv()
+
+# api_key = os.getenv('GOOGLE_API')
+
+# # Validate the presence of the API key
+# if not api_key:
+#     raise ValueError("Missing GOOGLE_API_KEY environment variable. Please set it in your .env file.")
+
+# # Configure the GenAI library
+# genai.configure(api_key=api_key)
+
+# # Create a Generative Model instance
+# model = genai.GenerativeModel('gemini-pro')
+
+# # Initialize a chat history
+# history = []
+
+# # Start a chat session
+# chat = model.start_chat(history=history)
+
+# def translate_to_english(text):
+#     translator = Translator(to_lang="english")
+#     translated_text = translator.translate(text)
+#     return translated_text
+
+# def translate_to_selected_language(text, target_language):
+#     translator = Translator(to_lang=target_language)
+#     translated_text = translator.translate(text)
+#     return translated_text
+
+# # Route to receive voice input from the HTML file
+# @app.route('/gemini', methods=['POST'])
+# @cross_origin(origin='http://127.0.0.1:5500')
+# def receive_voice_input():
+#     data = request.json
+#     voice_input = data.get('gemini', '')
+#     selected_language = data.get('selected_language', 'en')
+
+#     if selected_language != 'en':
+#         # Translate user's input (question) to English
+#         voice_input = translate_to_english(voice_input)
+#         print(voice_input)
+
+#     response = chat.send_message(voice_input + " (Keep the answer short and to the point)")
+#     ai_response = response.text
+
+#     if selected_language != 'en':
+#         # Translate AI response from English to the selected language
+#         ai_response = translate_to_selected_language(ai_response, selected_language)
+
+#     return jsonify({'ai_response': ai_response})
+
+# @app.route('/wiki_summary', methods=['POST'])
+# @cross_origin(origin='http://127.0.0.1:5500')
+# def get_wikipedia_summary():
+#     data = request.json
+#     search_query = data.get('search_query', '')
+#     selected_language = data.get('selected_language', 'en')
+
+#     if selected_language != 'en':
+#         # Translate search query to English
+#         search_query = translate_to_english(search_query)
+#         # print(search_query)
+
+#     # Fetch the Wikipedia summary for the given search query
+#     summary = wikipedia.summary(search_query, sentences=2)
+
+#     if selected_language != 'en':
+#         # Translate summary from English to the selected language
+#         summary = translate_to_selected_language(summary, selected_language)
+
+#     return jsonify({'summary': summary})
+
+# @app.route('/notes', methods=['POST'])
+# @cross_origin(origin='http://127.0.0.1:5500')
+# def create_notes():
+#     data = request.json
+#     file_name = data.get('file_name', '') + '.txt'  # Append '.txt' extension
+#     note_content = data.get('note_content', '')
+
+#     # Save the note content to a text file
+#     downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+#     file_path = os.path.join(downloads_dir, file_name)
+#     with open(file_path, 'w') as file:
+#         file.write(note_content)
+
+#     return jsonify({'status': 'success', 'message': 'Note saved successfully.'})
+
+# if __name__ == '__main__':
+#     app.run(debug=True)
 
 
 
