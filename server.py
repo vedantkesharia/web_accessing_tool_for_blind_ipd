@@ -52,7 +52,7 @@ def receive_voice_input():
         voice_input = translate_to_english(voice_input)
         print(voice_input)
 
-    response = chat.send_message(voice_input + " (Keep the answer short and to the point)")
+    response = chat.send_message(voice_input + " (Keep the answer short and to the point and give answer in proper framed sentence and dont give any special characters in response )")
     ai_response = response.text
 
     if selected_language != 'en':
