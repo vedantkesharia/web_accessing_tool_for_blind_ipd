@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
 from flask_cors import CORS, cross_origin
 from googletrans import Translator
 import google.generativeai as genai
@@ -39,6 +39,13 @@ def translate_to_selected_language(text, target_language):
     translated_text = translator.translate(text, dest=target_language).text
     return translated_text
 
+# List to store user queries
+user_queries = []
+
+# Function to append input to the list of user queries
+def append_to_user_queries(input_text):
+    user_queries.append(input_text)
+
 # Route to receive voice input from the HTML file
 @app.route('/gemini', methods=['POST'])
 @cross_origin(origin='http://127.0.0.1:5500')
@@ -49,8 +56,13 @@ def receive_voice_input():
 
     if selected_language != 'en':
         # Translate user's input (question) to English
-        voice_input = translate_to_english(voice_input)
-        print(voice_input)
+        voice_input_translated = translate_to_english(voice_input)
+        print(voice_input_translated)
+
+        voice_input = voice_input_translated
+
+    # Append input to the list of user queries
+    append_to_user_queries(voice_input)
 
     response = chat.send_message(voice_input + " (Keep the answer short and to the point and give answer in proper framed sentence and dont give any special characters in response )")
     ai_response = response.text
@@ -59,8 +71,9 @@ def receive_voice_input():
         # Translate AI response from English to the selected language
         ai_response = translate_to_selected_language(ai_response, selected_language)
 
-    return jsonify({'ai_response': ai_response})
+    return jsonify({'status': 'success', 'ai_response': ai_response})
 
+# Route to receive Wikipedia summary request
 @app.route('/wiki_summary', methods=['POST'])
 @cross_origin(origin='http://127.0.0.1:5500')
 def get_wikipedia_summary():
@@ -70,7 +83,13 @@ def get_wikipedia_summary():
 
     if selected_language != 'en':
         # Translate search query to English
-        search_query = translate_to_english(search_query)
+        search_query_translated = translate_to_english(search_query)
+        print(search_query_translated)
+
+        search_query = search_query_translated
+
+    # Append query to the list of user queries
+    append_to_user_queries(search_query)
 
     # Fetch the Wikipedia summary for the given search query
     summary = wikipedia.summary(search_query, sentences=2)
@@ -79,8 +98,9 @@ def get_wikipedia_summary():
         # Translate summary from English to the selected language
         summary = translate_to_selected_language(summary, selected_language)
 
-    return jsonify({'summary': summary})
+    return jsonify({'status': 'success', 'summary': summary})
 
+# Route to receive notes creation request
 @app.route('/notes', methods=['POST'])
 @cross_origin(origin='http://127.0.0.1:5500')
 def create_notes():
@@ -96,8 +116,130 @@ def create_notes():
 
     return jsonify({'status': 'success', 'message': 'Note saved successfully.'})
 
+# Function to write user queries to the file
+def write_user_queries_to_file():
+    with open('user_queries.txt', 'a') as file:
+        for query in user_queries:
+            file.write(query + '\n')
+
+# Register a function to be run after each request
+@app.before_request
+def before_request():
+    g.user_queries = []
+
+@app.after_request
+def after_request(response):
+    write_user_queries_to_file()
+    return response
+
+@app.teardown_appcontext
+def teardown_appcontext(exception=None):
+    write_user_queries_to_file()
+
 if __name__ == '__main__':
     app.run(debug=True)
+
+#works
+# from flask import Flask, request, jsonify
+# from flask_cors import CORS, cross_origin
+# from googletrans import Translator
+# import google.generativeai as genai
+# import os
+# import wikipedia
+# from dotenv import load_dotenv
+
+# # Initialize Flask app
+# app = Flask(__name__)
+# CORS(app)
+# load_dotenv()
+
+# api_key = os.getenv('GOOGLE_API')
+
+# # Validate the presence of the API key
+# if not api_key:
+#     raise ValueError("Missing GOOGLE_API_KEY environment variable. Please set it in your .env file.")
+
+# # Configure the GenAI library
+# genai.configure(api_key=api_key)
+
+# # Create a Generative Model instance
+# model = genai.GenerativeModel('gemini-pro')
+
+# # Initialize a chat history
+# history = []
+
+# # Start a chat session
+# chat = model.start_chat(history=history)
+
+# def translate_to_english(text):
+#     translator = Translator()
+#     translated_text = translator.translate(text, dest='en').text
+#     return translated_text
+
+# def translate_to_selected_language(text, target_language):
+#     translator = Translator()
+#     translated_text = translator.translate(text, dest=target_language).text
+#     return translated_text
+
+# # Route to receive voice input from the HTML file
+# @app.route('/gemini', methods=['POST'])
+# @cross_origin(origin='http://127.0.0.1:5500')
+# def receive_voice_input():
+#     data = request.json
+#     voice_input = data.get('gemini', '')
+#     selected_language = data.get('selected_language', 'en')
+
+#     if selected_language != 'en':
+#         # Translate user's input (question) to English
+#         voice_input = translate_to_english(voice_input)
+#         print(voice_input)
+
+#     response = chat.send_message(voice_input + " (Keep the answer short and to the point and give answer in proper framed sentence and dont give any special characters in response )")
+#     ai_response = response.text
+
+#     if selected_language != 'en':
+#         # Translate AI response from English to the selected language
+#         ai_response = translate_to_selected_language(ai_response, selected_language)
+
+#     return jsonify({'ai_response': ai_response})
+
+# @app.route('/wiki_summary', methods=['POST'])
+# @cross_origin(origin='http://127.0.0.1:5500')
+# def get_wikipedia_summary():
+#     data = request.json
+#     search_query = data.get('search_query', '')
+#     selected_language = data.get('selected_language', 'en')
+
+#     if selected_language != 'en':
+#         # Translate search query to English
+#         search_query = translate_to_english(search_query)
+
+#     # Fetch the Wikipedia summary for the given search query
+#     summary = wikipedia.summary(search_query, sentences=2)
+
+#     if selected_language != 'en':
+#         # Translate summary from English to the selected language
+#         summary = translate_to_selected_language(summary, selected_language)
+
+#     return jsonify({'summary': summary})
+
+# @app.route('/notes', methods=['POST'])
+# @cross_origin(origin='http://127.0.0.1:5500')
+# def create_notes():
+#     data = request.json
+#     file_name = data.get('file_name', '') + '.txt'  # Append '.txt' extension
+#     note_content = data.get('note_content', '')
+
+#     # Save the note content to a text file
+#     downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+#     file_path = os.path.join(downloads_dir, file_name)
+#     with open(file_path, 'w') as file:
+#         file.write(note_content)
+
+#     return jsonify({'status': 'success', 'message': 'Note saved successfully.'})
+
+# if __name__ == '__main__':
+#     app.run(debug=True)
 
 
 
