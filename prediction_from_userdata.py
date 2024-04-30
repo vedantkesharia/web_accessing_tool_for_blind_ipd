@@ -3,7 +3,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import pickle
 
 # Load the dataset
-sports_df = pd.read_excel('example_queries_sports.xlsx')
+sports_df = pd.read_excel('queries_dataset.xlsx')
 
 # Load the saved model
 with open('field_of_interest.pkl', 'rb') as file:

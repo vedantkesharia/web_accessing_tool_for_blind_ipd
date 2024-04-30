@@ -114,5 +114,5 @@ for _ in range(100):
 df = pd.DataFrame({'Query': query_list, 'Field': field_list})
 
 # Saving to an Excel file
-df.to_excel('example_queries_sports.xlsx', index=False)
+df.to_excel('queries_dataset.xlsx', index=False)
 print('Excel file with example queries with sports-related categories has been created.')
